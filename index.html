@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absensi Digital Sekolah</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0; padding: 0;
+        background: #f4f4f4;
+    }
+    header {
+        background: #007bff;
+        color: white;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+    }
+    header img {
+        height: 50px;
+        margin-right: 10px;
+    }
+    header h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+    .container {
+        padding: 15px;
+        max-width: 600px;
+        margin: auto;
+        background: white;
+        border-radius: 8px;
+    }
+    input, select, button {
+        padding: 8px;
+        margin: 5px 0;
+        width: 100%;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    table, th, td {
+        border: 1px solid #ccc;
+    }
+    th, td {
+        padding: 8px;
+        text-align: center;
+    }
+    .btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-danger {
+        background: red;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <!-- Ganti src dengan logo sekolahmu -->
+    <img src="logo smk.png" alt="Logo SMK">
+    <h2>Absensi Digital Sekolah</h2>
+</header>
+
+<div class="container">
+    <h3>Input Data Absensi</h3>
+    <input type="text" id="nama" placeholder="Nama">
+    <select id="jurusan" onchange="updateKelasOptions()">
+        <option value="">Pilih Jurusan</option>
+        <option value="OTKP">OTKP</option>
+        <option value="AKL">AKL</option>
+        <option value="RPL">RPL</option>
+        <option value="BDP">BDP</option>
+    </select>
+    <select id="kelas">
+        <option value="">Pilih Kelas</option>
+    </select>
+    <select id="keterangan">
+        <option value="">Pilih Keterangan</option>
+        <option value="Alpa">Alpa</option>
+        <option value="Izin">Izin</option>
+        <option value="Sakit">Sakit</option>
+    </select>
+    <button class="btn" onclick="tambahData()">Tambah</button>
+    <button class="btn" onclick="generatePDF()">Download PDF</button>
+
+    <table id="attendanceTable">
+        <thead>
+            <tr>
+                <th>Nama</th>
+                <th>Jurusan</th>
+                <th>Kelas</th>
+                <th>Keterangan</th>
+                <th>Tanggal</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script>
+    let editIndex = -1;
+
+    function updateKelasOptions() {
+        const jurusan = document.getElementById("jurusan").value;
+        const kelasSelect = document.getElementById("kelas");
+        kelasSelect.innerHTML = "<option value=''>Pilih Kelas</option>";
+
+        if (jurusan) {
+            ["X", "XI", "XII"].forEach(level => {
+                let opt = document.createElement("option");
+                opt.value = `${level} ${jurusan}`;
+                opt.textContent = `${level} ${jurusan}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function tambahData() {
+        const nama = document.getElementById("nama").value.trim();
+        const jurusan = document.getElementById("jurusan").value;
+        const kelas = document.getElementById("kelas").value;
+        const keterangan = document.getElementById("keterangan").value;
+        const tanggal = new Date().toLocaleDateString('id-ID');
+
+        if (!nama || !jurusan || !kelas || !keterangan) {
+            alert("Harap isi semua data!");
+            return;
+        }
+
+        const tbody = document.querySelector("#attendanceTable tbody");
+
+        if (editIndex === -1) {
+            let row = tbody.insertRow();
+            row.insertCell(0).textContent = nama;
+            row.insertCell(1).textContent = jurusan;
+            row.insertCell(2).textContent = kelas;
+            row.insertCell(3).textContent = keterangan;
+            row.insertCell(4).textContent = tanggal;
+            let aksiCell = row.insertCell(5);
+            aksiCell.innerHTML = `<button onclick="editData(this)">Edit</button> 
+                                   <button class='btn-danger' onclick="hapusData(this)">Hapus</button>`;
+        } else {
+            let row = tbody.rows[editIndex];
+            row.cells[0].textContent = nama;
+            row.cells[1].textContent = jurusan;
+            row.cells[2].textContent = kelas;
+            row.cells[3].textContent = keterangan;
+            editIndex = -1;
+        }
+
+        document.getElementById("nama").value = "";
+        document.getElementById("jurusan").value = "";
+        document.getElementById("kelas").innerHTML = "<option value=''>Pilih Kelas</option>";
+        document.getElementById("keterangan").value = "";
+    }
+
+    function editData(btn) {
+        const row = btn.parentNode.parentNode;
+        editIndex = row.rowIndex - 1;
+        document.getElementById("nama").value = row.cells[0].textContent;
+        document.getElementById("jurusan").value = row.cells[1].textContent;
+        updateKelasOptions();
+        document.getElementById("kelas").value = row.cells[2].textContent;
+        document.getElementById("keterangan").value = row.cells[3].textContent;
+    }
+
+    function hapusData(btn) {
+        btn.parentNode.parentNode.remove();
+    }
+
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let yPos = 10;
+
+        doc.setFontSize(16);
+        doc.text("Laporan Absensi Bulanan", 10, yPos);
+        yPos += 10;
+
+        const table = document.getElementById("attendanceTable");
+        const rows = [];
+        for (let i = 1; i < table.rows.length; i++) {
+            const row = [];
+            for (let j = 0; j < table.rows[i].cells.length - 1; j++) {
+                row.push(table.rows[i].cells[j].innerText);
+            }
+            rows.push(row);
+        }
+
+        doc.autoTable({
+            head: [["Nama", "Jurusan", "Kelas", "Keterangan", "Tanggal"]],
+            body: rows,
+            startY: yPos,
+        });
+
+        const rekapPerHari = {};
+        rows.forEach(row => {
+            const tanggal = row[4];
+            const keterangan = row[3];
+            if (!rekapPerHari[tanggal]) {
+                rekapPerHari[tanggal] = { Alpa: 0, Izin: 0, Sakit: 0 };
+            }
+            if (keterangan === "Alpa") rekapPerHari[tanggal].Alpa++;
+            if (keterangan === "Izin") rekapPerHari[tanggal].Izin++;
+            if (keterangan === "Sakit") rekapPerHari[tanggal].Sakit++;
+        });
+
+        yPos = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(14);
+        doc.text("Rekap Per Hari", 10, yPos);
+        yPos += 5;
+
+        const rekapBody = Object.entries(rekapPerHari).map(([tanggal, data]) => [
+            tanggal, data.Alpa, data.Izin, data.Sakit
+        ]);
+
+        doc.autoTable({
+            head: [["Tanggal", "Alpa", "Izin", "Sakit"]],
+            body: rekapBody,
+            startY: yPos,
+        });
+
+        doc.save("laporan_absensi.pdf");
+    }
+</script>
+
+</body>
+</html>
